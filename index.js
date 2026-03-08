@@ -8,7 +8,7 @@ var COOKIE = new Object();
 var SERVER = new Object();
 var ConfigEnvs = {
     'admin': 0b000,
-    //'adminloginpage'    : 0b010,
+    'adminloginpage'    : 0b010,
     'autoJumpFirstDisk': 0b010,
     'background': 0b011,
     'backgroundm': 0b011,
@@ -21,7 +21,7 @@ var ConfigEnvs = {
     'sitename': 0b011,
     'customScript': 0b011,
     'customCss': 0b011,
-    //'customTheme'       : 0b011,
+    'customTheme'       : 0b011,
     //'theme'             : 0b010,
     'dontBasicAuth': 0b010,
 
@@ -85,11 +85,16 @@ async function main(req) {
 
     let admin = await getConfig('admin');
     if (admin == null || admin == '') return install();
+    
+    //从'adminloginpage'登录
+    let adminusername = await getConfig('adminloginpage');
+    if (adminusername == null || adminusername == '') adminusername = 'admin';
 
     SERVER['admin'] = false;
     if (COOKIE['admin'] == await md5(admin)) {
         SERVER['admin'] = true;
-    } else if (GET['admin'] == true) {
+    //} else if (GET['admin'] == true) {
+    } else if (GET[adminusername] == true) {
         if (POST['password1'] == admin) {
             SERVER['admin'] = true;
             return adminlogin('admin', await md5(POST['password1']), path);
@@ -1797,12 +1802,32 @@ async function render(path, files) {
     Github: https://github.com/qkqpttgf/OneManager-php
 -->`;
 
-    let theme1 = await fetch(THEME);
+    //访问浏览时应用customTheme
+    let customTheme = await getConfig('customTheme');
+    if (SERVER['admin'] == true || customTheme == null || customTheme == '') customTheme = THEME;
+    let theme1 = await fetch(customTheme);
+    //let theme1 = await fetch(THEME);
     let html = await theme1.text();
 
     let tmp = html.split('<!--IconValuesStart-->');
     html = tmp[0];
-    tmp = tmp[1].split('<!--IconValuesEnd-->');
+    //tmp = tmp[1].split('<!--IconValuesEnd-->');    
+    //给没有IconValues的主题补上原版主题的IconValues
+    if (tmp[1] != null) {
+        tmp = tmp[1].split('<!--IconValuesEnd-->');
+    } else {
+        tmp = ['{"music":"musical-notes",\
+            "video":"logo-youtube",\
+            "img":"image",\
+            "office":"paper",\
+            "txt":"clipboard",\
+            "zip":"filing",\
+            "iso":"disc",\
+            "apk":"logo-android",\
+            "exe":"logo-windows",\
+            "default":"document"}',
+            ''];
+    }
     let IconValues = JSON.parse(tmp[0]);
     html += tmp[1];
 
